@@ -749,6 +749,15 @@ app.listen(PORT, () => {
   loopScan();
 });
 
+app.get("/api/run-scan", async (req, res) => {
+  try {
+    const result = await scanMarket(); // ⚠️ 保持一样
+    res.json({ ok: true, from: "run-scan", ...result });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 
 // ✅ 👉 在这里加（很关键）
 app.get("/api/test-telegram", async (req, res) => {
