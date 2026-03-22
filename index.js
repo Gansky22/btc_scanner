@@ -55,6 +55,7 @@ function mean(arr) {
 async function fetchBingxKlines(interval = "5m", limit = 300) {
   try {
     const url = `${BINGX_BASE_URL}/openApi/swap/v3/quote/klines`;
+
     const res = await axios.get(url, {
       params: {
         symbol: SYMBOL,
@@ -64,21 +65,47 @@ async function fetchBingxKlines(interval = "5m", limit = 300) {
       timeout: 15000,
     });
 
-    const rows = res?.data?.data || [];
+    const raw = res?.data;
+
+    // 先把原始返回打印出来，方便 Railway logs 看
+    console.log("BingX raw response:", JSON.stringify(raw).slice(0, 1000));
+
+    let rows = [];
+
+    // 常见格式 1
+    if (Array.isArray(raw?.data)) {
+      rows = raw.data;
+    }
+    // 常见格式 2
+    else if (Array.isArray(raw?.data?.data)) {
+      rows = raw.data.data;
+    }
+    // 常见格式 3
+    else if (Array.isArray(raw?.data?.klines)) {
+      rows = raw.data.klines;
+    }
+    // 常见格式 4
+    else if (Array.isArray(raw?.klines)) {
+      rows = raw.klines;
+    }
+
     if (!Array.isArray(rows) || rows.length === 0) {
-      throw new Error(`No kline data from BingX: ${interval}`);
+      throw new Error(`No kline data from BingX: ${interval} | raw=${JSON.stringify(raw).slice(0, 300)}`);
     }
 
     const mapped = rows.map((r) => ({
-      time: Number(r.time || r.timestamp || r.openTime || 0),
-      open: Number(r.open),
-      high: Number(r.high),
-      low: Number(r.low),
-      close: Number(r.close),
-      volume: Number(r.volume || r.vol || 0),
+      time: Number(r.time || r.timestamp || r.openTime || r[0] || 0),
+      open: Number(r.open || r[1]),
+      high: Number(r.high || r[2]),
+      low: Number(r.low || r[3]),
+      close: Number(r.close || r[4]),
+      volume: Number(r.volume || r.vol || r[5] || 0),
     }));
 
-    return mapped.sort((a, b) => a.time - b.time);
+    return mapped
+      .filter(c => c.time && !Number.isNaN(c.close))
+      .sort((a, b) => a.time - b.time);
+
   } catch (err) {
     throw new Error(`fetchBingxKlines(${interval}) failed: ${err.message}`);
   }
