@@ -748,3 +748,14 @@ app.listen(PORT, () => {
   console.log(`Scan: /api/scan`);
   loopScan();
 });
+
+
+// ✅ 👉 在这里加（很关键）
+app.get("/api/test-telegram", async (req, res) => {
+  try {
+    await sendTelegramMessage("测试成功 🚀 Telegram 已连通");
+    res.json({ ok: true, message: "Telegram sent" });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
